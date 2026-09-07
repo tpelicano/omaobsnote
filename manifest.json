@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "tpelicano",
   "license": "MIT",
-  "description": "OneNote-style scratchpad for Obsidian, in the bar: capture clipboard text, images and screen regions straight into markdown pages, then browse, search and copy back out — all without opening Obsidian.",
+  "description": "Capture into Obsidian from the bar: clipboard text, typed notes, pasted images and dragged screen regions become timestamped entries in markdown pages — then browse, search and copy back out, all without opening Obsidian.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "ObsNote",
-    "description": "Obsidian scratchpad: capture, browse, search, copy back",
+    "description": "Capture clipboard, notes, images and screen regions into Obsidian",
     "category": "Productivity",
     "allowMultiple": false,
     "defaultSection": "right",

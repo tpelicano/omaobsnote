@@ -1,42 +1,60 @@
 # ObsNote
 
-A OneNote-style scratchpad for Obsidian, living in the Omarchy bar.
+**Capture into Obsidian from the Omarchy bar.** Clipboard text, a pasted image,
+a dragged screen region, or a note you type — one click and it is a timestamped
+entry in a markdown page in your vault.
 
-Copy something — a command, a paragraph, a URL, a screenshot — hit the bar
-icon, and it lands in a markdown page in your vault, timestamped and stamped
-with the app it came from. Browse those pages, search them, and copy a snippet
-back out into a terminal, all from the panel. **Obsidian never has to be
-running**: ObsNote writes markdown files directly, and only launches Obsidian
-when you explicitly ask it to open a page.
+The other Obsidian plugins in the marketplace read your vault: they search it,
+open notes, switch between them. ObsNote writes to it. It is the OneNote quick
+note, on Linux: a scratchpad you paste into from anywhere, where a page is a
+category.
+
+**Obsidian never has to be running.** ObsNote writes markdown files directly,
+and only launches Obsidian when you explicitly ask it to open a page.
 
 ![ObsNote's capture and browse views](preview.png)
 
-## What it does
+## Capture
 
-- **Capture** the clipboard into a page you pick, or type a note in the panel.
-  Text that looks like a command or code is fenced automatically; a bare URL
-  becomes a markdown link. You can override the format per capture
-  (`text` / `bullet` / `quote` / `code` / `link`).
-- **Pages are categories.** Create as many as you like; pin the ones you use
-  most so they sit at the top of every picker.
-- **Images**: paste one from the clipboard, or drag a screen region. Region
-  clips go through `omarchy-capture-region`, the same picker the first-party
-  screenshot and screen-recording commands use, so the frozen screen, the
-  window and monitor snapping and the keyboard binds are identical to
-  `SUPER + PrintScr`. The PNG is saved into the vault and embedded with
+- **The clipboard, into a page you pick.** Text that looks like a command or
+  code is fenced automatically, with the language guessed; a bare URL becomes a
+  markdown link. Override the format per capture — `text`, `bullet`, `quote`,
+  `code`, `link`.
+- **A note you type**, straight in the panel. `Ctrl+Enter` appends it.
+- **An image on the clipboard** — saved into the vault and embedded with
   `![[…]]`.
-- **Source stamping**: every capture records the app and window title it came
-  from, so a snippet still means something a week later.
-- **Browse** a page's captures newest-first and copy any one of them back to the
-  clipboard — the copy strips ObsNote's own metadata line and unwraps the code
-  fence, so what lands in your terminal is the command, not the markdown.
-- **Search** every capture page full-text and copy from the results.
-- **Quick capture** with no UI at all: a global hotkey, a right-click on the bar
-  icon, or `obsnote capture` from a script.
-- **Vault housekeeping**: ObsNote maintains a folder note listing your pages,
-  can link that folder note from an index page of your choosing, and can add
-  the capture folder to the vault's `.gitignore`. Each of those is a button you
-  press — nothing is written outside the capture folder without you asking.
+- **A screen region**, dragged. Region clips go through
+  `omarchy-capture-region`, the same picker the first-party screenshot and
+  screen-recording commands use, so the frozen screen, the window and monitor
+  snapping, and the keyboard binds are identical to `SUPER + PrintScr`.
+- **Without opening anything at all**: a global hotkey, a right-click on the bar
+  icon, or `obsnote capture` from a script. Each one sends a notification and
+  gets out of the way.
+
+Every capture is stamped with the app and window title it came from, so a
+snippet still means something a week later.
+
+## And then get it back out
+
+Capture is only half of a scratchpad — the other half is retrieving what you
+threw in there.
+
+- **Browse** a page's captures newest-first, and copy any one of them back to
+  the clipboard. The copy strips ObsNote's own metadata line and unwraps the
+  code fence, so what lands in your terminal is the command, not the markdown
+  around it.
+- **Search** every capture page full-text and copy straight from the results.
+- **Open in Obsidian** when you actually want the editor — the panel deep-links
+  to the exact page.
+
+## Pages are categories
+
+Create as many as you like and pin the ones you use most, so they sit at the top
+of every picker. ObsNote keeps a folder note listing them all, can link that
+folder note from an index page of your choosing, and can add the capture folder
+to the vault's `.gitignore` if you would rather your scratch not land in git.
+Each of those is a button you press — nothing is written outside the capture
+folder without you asking.
 
 ## Install
 
