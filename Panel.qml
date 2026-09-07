@@ -325,14 +325,8 @@ Panel {
 
     var file = Model.pagePath(root.cfg, job.page)
     var header = Model.newPageHeader(job.page, new Date())
-    var script = "set -e\n"
-      + "dir=" + root.q(root.folderPath) + "\n"
-      + "file=" + root.q(file) + "\n"
-      + "mkdir -p -- \"$dir\"\n"
-      + "if [ ! -s \"$file\" ]; then printf '%s' " + root.q(header) + " > \"$file\"; fi\n"
-      + "cat >> \"$file\"\n"
     root.appendPayload = job.payload
-    appendProc.command = ["bash", "-c", script]
+    appendProc.command = ["bash", "-c", Model.appendScript(root.folderPath, file, header, root.q)]
     appendProc.stdinEnabled = true
     appendProc.running = true
   }
@@ -427,29 +421,32 @@ Panel {
     var dir = Model.attachmentsPath(root.cfg)
     var file = dir + "/" + root.pendingImageName
     root.busy = true
-    imageProc.command = ["bash", "-c",
-      "set -e\nmkdir -p -- " + root.q(dir) + "\nwl-paste --type image/png > " + root.q(file)
-      + "\ntest -s " + root.q(file)]
+    imageProc.command = ["bash", "-c", Model.clipboardImageScript(dir, file, root.q)]
     imageProc.running = true
   }
 
-  // grim needs the screen to itself, so the panel gets out of the way first and
-  // slurp's own overlay takes over.
+  // The picker freezes the screen, so the panel has to be gone -- not merely
+  // closing -- before it starts, or the popup is baked into the capture.
   function clipRegion() {
     if (!root.ready) { root.setMode("setup"); root.say("Finish setup first", "error"); return }
     root.pendingImagePage = root.selectedPage || root.cfg.defaultPage
     root.pendingImageName = Model.attachmentFileName(new Date(), "png")
     // Stamp the window that was focused before the grab, not after it.
     sourceProbe.running = true
-    var dir = Model.attachmentsPath(root.cfg)
-    var file = dir + "/" + root.pendingImageName
     root.close()
     root.busy = true
-    imageProc.command = ["bash", "-c",
-      "set -e\nmkdir -p -- " + root.q(dir)
-      + "\ngeom=$(slurp -d) || exit 1\ngrim -g \"$geom\" " + root.q(file)
-      + "\ntest -s " + root.q(file)]
-    imageProc.running = true
+    regionDelay.restart()
+  }
+
+  Timer {
+    id: regionDelay
+    interval: 220
+    onTriggered: {
+      var dir = Model.attachmentsPath(root.cfg)
+      imageProc.command = ["bash", "-c",
+        Model.regionCaptureScript(dir, dir + "/" + root.pendingImageName, root.q)]
+      imageProc.running = true
+    }
   }
 
   Process {
@@ -590,9 +587,7 @@ Panel {
     var header = Model.newPageHeader(page, new Date())
     root.pendingNewPage = page
     createPageProc.command = ["bash", "-c",
-      "set -e\nmkdir -p -- " + root.q(root.folderPath)
-      + "\nfile=" + root.q(file)
-      + "\nif [ -e \"$file\" ]; then exit 3; fi\nprintf '%s' " + root.q(header) + " > \"$file\""]
+      Model.createPageScript(root.folderPath, file, header, root.q)]
     createPageProc.running = true
   }
 

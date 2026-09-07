@@ -19,8 +19,12 @@ when you explicitly ask it to open a page.
   (`text` / `bullet` / `quote` / `code` / `link`).
 - **Pages are categories.** Create as many as you like; pin the ones you use
   most so they sit at the top of every picker.
-- **Images**: paste one from the clipboard, or drag a screen region. The PNG is
-  saved into the vault and embedded with `![[…]]`.
+- **Images**: paste one from the clipboard, or drag a screen region. Region
+  clips go through `omarchy-capture-region`, the same picker the first-party
+  screenshot and screen-recording commands use, so the frozen screen, the
+  window and monitor snapping and the keyboard binds are identical to
+  `SUPER + PrintScr`. The PNG is saved into the vault and embedded with
+  `![[…]]`.
 - **Source stamping**: every capture records the app and window title it came
   from, so a snippet still means something a week later.
 - **Browse** a page's captures newest-first and copy any one of them back to the
@@ -69,7 +73,8 @@ layout) and deletes `~/.config/omarchy/plugins/tpelicano.obsnote`. It does
 |---|---|---|
 | `wl-clipboard` (`wl-paste`, `wl-copy`) | Reading and writing the clipboard | **Required** — capture and copy-back do nothing |
 | `hyprctl` | The app/window a capture came from | Captures still work, with no source line |
-| `grim` + `slurp` | The "Clip region" screenshot button | The button reports "No image captured" |
+| `omarchy-capture-region` + `grim` | The "Clip region" button: frozen screen, window/monitor snapping | Falls back to bare `slurp`; freeform selection only, no freeze |
+| `hyprpicker`, `jq` | Used by `omarchy-capture-region` for the freeze and the snap rectangles | The picker degrades on its own |
 | `ripgrep` (`rg`) | Search | Falls back to `grep -rnI`; same results, slower on big folders |
 | `jq` or `python3` | Only for `bin/obsnote read` / `search` / `path` | Those CLI subcommands refuse to run; the panel is unaffected |
 | Obsidian | Opening a page from the panel | Everything else works; ObsNote reads and writes plain markdown |

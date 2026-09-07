@@ -688,6 +688,81 @@ function hyprlandBinding() {
   return "bindd = SUPER SHIFT, N, ObsNote quick capture, exec, omarchy-shell obsnote quickCapture"
 }
 
+// ------------------------------------------------------------- shell jobs ----
+
+// Every command ObsNote runs is built here so the quoting and the redirects
+// are unit-testable. `quote` is injected because QML uses the shell kit's
+// Util.shellQuote; the default is the same algorithm.
+function shellQuote(value) {
+  return "'" + String(value === undefined || value === null ? "" : value).replace(/'/g, "'\\''") + "'"
+}
+
+function quoterOr(quote) {
+  return typeof quote === "function" ? quote : shellQuote
+}
+
+// Captures are appended, never read-modify-written: an edit made in Obsidian
+// at the same moment cannot be lost, and the payload rides in on stdin so a
+// megabyte of clipboard never has to survive shell quoting.
+function appendScript(dir, file, header, quote) {
+  var q = quoterOr(quote)
+  return "set -e\n"
+    + "dir=" + q(dir) + "\n"
+    + "file=" + q(file) + "\n"
+    + "mkdir -p -- \"$dir\"\n"
+    + "if [ ! -s \"$file\" ]; then printf '%s' " + q(header) + " > \"$file\"; fi\n"
+    + "cat >> \"$file\"\n"
+}
+
+// `>` would truncate a page that already exists, so creating one refuses
+// rather than racing the user's own notes. Exit 3 means "already there".
+function createPageScript(dir, file, header, quote) {
+  var q = quoterOr(quote)
+  return "set -e\n"
+    + "mkdir -p -- " + q(dir) + "\n"
+    + "file=" + q(file) + "\n"
+    + "if [ -e \"$file\" ]; then exit 3; fi\n"
+    + "printf '%s' " + q(header) + " > \"$file\"\n"
+}
+
+function clipboardImageScript(dir, file, quote) {
+  var q = quoterOr(quote)
+  return "set -e\n"
+    + "mkdir -p -- " + q(dir) + "\n"
+    + "wl-paste --type image/png </dev/null > " + q(file) + "\n"
+    + "test -s " + q(file) + "\n"
+}
+
+// Region capture goes through omarchy-capture-region, the same picker the
+// first-party screenshot and screen-recording commands use, so the frozen
+// screen, the window/monitor snapping and the keyboard binds are identical to
+// SUPER+PrintScr. grim runs against the freeze the picker leaves standing, and
+// hardware cursors are forced for the duration so a software-composited cursor
+// is not baked into the PNG.
+//
+// Every command that could touch stdin is redirected from /dev/null:
+// slurp reads rectangle candidates from stdin whenever it is not a TTY, and a
+// QProcess hands its child an stdin pipe that never closes -- so slurp would
+// block on read() forever and never map its surface.
+function regionCaptureScript(dir, file, quote) {
+  var q = quoterOr(quote)
+  return "dir=" + q(dir) + "\n"
+    + "file=" + q(file) + "\n"
+    + "mkdir -p -- \"$dir\" || exit 1\n"
+    + "if command -v omarchy-capture-region >/dev/null 2>&1; then\n"
+    + "  nohw=$(hyprctl getoption cursor:no_hardware_cursors -j 2>/dev/null | jq -r '.int' 2>/dev/null)\n"
+    + "  hyprctl keyword cursor:no_hardware_cursors 0 >/dev/null 2>&1\n"
+    + "  { read -r freeze; read -r sel; } < <(omarchy-capture-region smart --keep-freeze </dev/null)\n"
+    + "  if [ -n \"$sel\" ]; then grim -g \"$sel\" \"$file\" >/dev/null 2>&1; fi\n"
+    + "  if [ -n \"$freeze\" ]; then kill \"$freeze\" 2>/dev/null; fi\n"
+    + "  case \"$nohw\" in '' | null) : ;; *) hyprctl keyword cursor:no_hardware_cursors \"$nohw\" >/dev/null 2>&1 ;; esac\n"
+    + "else\n"
+    + "  sel=$(slurp -d </dev/null) || exit 1\n"
+    + "  grim -g \"$sel\" \"$file\" >/dev/null 2>&1\n"
+    + "fi\n"
+    + "test -s \"$file\"\n"
+}
+
 // ----------------------------------------------------------------- store ----
 
 function normalizeStringList(raw, limit) {
@@ -841,6 +916,11 @@ if (typeof module !== "undefined" && module.exports) {
     ensureLine: ensureLine,
     gitignoreLine: gitignoreLine,
     hyprlandBinding: hyprlandBinding,
+    shellQuote: shellQuote,
+    appendScript: appendScript,
+    createPageScript: createPageScript,
+    clipboardImageScript: clipboardImageScript,
+    regionCaptureScript: regionCaptureScript,
     emptyStore: emptyStore,
     normalizeStore: normalizeStore,
     parseStore: parseStore,
