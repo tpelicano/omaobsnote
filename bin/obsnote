@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# obsnote -- command line front end for the ObsNote Omarchy bar plugin.
+#
+# Capture actions are forwarded to the running shell over IPC, so they take the
+# exact same code path as the panel buttons (same formatting, same source
+# stamp, same notification). Read-only actions work straight off the vault on
+# disk, so `obsnote read` and `obsnote search` keep working even if the shell
+# is not running.
+
+set -euo pipefail
+
+PROGRAM=${0##*/}
+
+die() { echo "$PROGRAM: $1" >&2; exit 1; }
+
+ipc() { omarchy-shell obsnote "$@"; }
+
+# The plugin reports where the vault is; nothing here has to guess or read the
+# plugin's state file format.
+status_json() {
+  local out
+  out=$(ipc status 2>/dev/null) || die "the Omarchy shell is not running"
+  [[ -n $out ]] || die "ObsNote did not answer -- is the widget enabled?"
+  printf '%s' "$out"
+}
+
+json_field() {
+  local key=$1 json=$2
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg k "$key" '.[$k] // ""' <<<"$json"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1],""))' "$key" <<<"$json"
+  else
+    die "need jq or python3 to read the plugin status"
+  fi
+}
+
+folder_path() {
+  local path
+  path=$(json_field folderPath "$(status_json)")
+  [[ -n $path ]] || die "ObsNote is not configured yet -- open the panel and finish Setup"
+  printf '%s' "$path"
+}
+
+page_file() {
+  local page=$1
+  [[ -n $page ]] || page=$(json_field defaultPage "$(status_json)")
+  printf '%s/%s.md' "$(folder_path)" "$page"
+}
+
+usage() {
+  cat <<USAGE
+Usage: $PROGRAM <command> [args]
+
+Capture (through the running shell):
+  capture [page]        Capture the clipboard into <page> (default page if omitted)
+  note <text...>        Append literal text to the default page
+  note -p <page> <text> Append literal text to <page>
+  clip                  Drag a screen region and embed the PNG
+  image                 Save the clipboard image and embed it
+
+Read (straight off the vault):
+  pages                 List capture pages
+  read [page]           Print a page
+  search <query...>     Search every capture page
+  path [page]           Print the file path of a page
+  folder                Print the capture folder
+
+Other:
+  open [page]           Open a page (or the folder note) in Obsidian
+  toggle | show | hide  Drive the bar panel
+  status                Print the plugin's JSON status
+  hotkey                Print a Hyprland bind line for quick capture
+USAGE
+}
+
+command=${1-}
+[[ -n $command ]] || { usage; exit 1; }
+shift || true
+
+case $command in
+capture)
+  if [[ $# -gt 0 ]]; then ipc captureTo "$1"; else ipc quickCapture; fi
+  ;;
+note)
+  page=""
+  if [[ ${1-} == "-p" || ${1-} == "--page" ]]; then
+    page=${2-}
+    [[ -n $page ]] || die "note: -p needs a page name"
+    shift 2
+  fi
+  [[ $# -gt 0 ]] || die "note: nothing to write"
+  if [[ -n $page ]]; then ipc noteTo "$page" "$*"; else ipc note "$*"; fi
+  ;;
+clip) ipc clip ;;
+image) ipc pasteImage ;;
+pages) ipc pages ;;
+read)
+  file=$(page_file "${1-}")
+  [[ -f $file ]] || die "no such page: $file"
+  cat -- "$file"
+  ;;
+search)
+  [[ $# -gt 0 ]] || die "search: nothing to search for"
+  dir=$(folder_path)
+  if command -v rg >/dev/null 2>&1; then
+    rg --smart-case --heading --line-number -e "$*" -- "$dir"
+  else
+    grep -rnI --include='*.md' -e "$*" -- "$dir"
+  fi
+  ;;
+path) page_file "${1-}"; echo ;;
+folder) folder_path; echo ;;
+# Building the obsidian:// URI is the plugin's job -- it knows the vault name
+# Obsidian registered, which is not always the folder name on disk.
+open) ipc openPage "${1-}" ;;
+toggle) ipc toggle ;;
+show) ipc show ;;
+hide) ipc hide ;;
+status) status_json; echo ;;
+hotkey) echo 'bindd = SUPER SHIFT, N, ObsNote quick capture, exec, omarchy-shell obsnote quickCapture' ;;
+-h | --help | help) usage ;;
+*) die "unknown command: $command (try $PROGRAM --help)" ;;
+esac

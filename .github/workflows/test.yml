@@ -1,0 +1,36 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: pacman -Syu --noconfirm nodejs jq qt6-declarative git
+
+      # qmllint needs the real shell tree for `import qs.Ui` to resolve, and
+      # omarchy-plugin-validate is the manifest contract itself. Take both from
+      # source rather than the 115 MB pacman package -- the plugin host lives on
+      # the `quattro` branch (master is still Omarchy 3.x, with no shell/ at all).
+      # No `|| true`: if this breaks, the run goes red rather than quietly
+      # reducing the suite to the Node tests.
+      - name: Install the Omarchy shell tree
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch quattro https://github.com/basecamp/omarchy /tmp/omarchy
+          mkdir -p /usr/share/omarchy
+          cp -a /tmp/omarchy/. /usr/share/omarchy/
+          install -m755 /usr/share/omarchy/bin/omarchy-plugin-validate /usr/local/bin/
+          test -d /usr/share/omarchy/shell/Ui
+
+      # STRICT makes test/all fail on a skipped suite instead of passing over it.
+      - name: Run the suite
+        env:
+          STRICT: "1"
+        run: bash test/all
